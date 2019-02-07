@@ -2,11 +2,60 @@
 var express = require('express'),
     app     = express(),
     morgan  = require('morgan');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
     
-Object.assign=require('object-assign')
+Object.assign=require('object-assign');
 
-app.engine('html', require('ejs').renderFile);
-app.use(morgan('combined'))
+const authRoute = require('./api/routes/auth.routes');
+const userRoute = require('./api/routes/user.routes');
+const postRoute = require('./api/routes/post.routes');
+
+
+mongoose.connect('mongodb://jaggi:jaggi123@ds213645.mlab.com:13645/recipes-food-api', { useNewUrlParser: true });
+
+mongoose.Promise = global.Promise;
+
+app.use(morgon('dev'));
+app.use('/uploads', express.static('uploads'))
+app.use(bodyParser.urlencoded({extended: true})); 
+app.use(bodyParser.json()); 
+
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Origin-Headers', '*');
+  res.header('Access-Control-Allow-Headers', '*');
+  res.header('Access-Control-Allow-Methods', 'PUT, POST, GET, PATCH, DELETE');
+
+  if (req.method === 'OPTIONS') {
+      return res.status(200).json({});
+  }
+  next();
+});
+
+app.use('/', authRoute);
+app.use('/', userRoute);
+app.use('/', postRoute);
+
+app.use((req, res, next) => {
+    const error = new Error('Not Found');
+    error.status = 404;
+    next(error);
+});
+
+app.use((error, req, res, next) => {
+    res.status(error.status || 500);
+    res.json({
+        error: {
+            message: error.message
+        }
+    });
+
+});
+
+// app.engine('html', require('ejs').renderFile);
+// app.use(morgan('combined'))
 
 var port = process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || 8080,
     ip   = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0',
@@ -73,41 +122,41 @@ var initDb = function(callback) {
   });
 };
 
-app.get('/', function (req, res) {
-  // try to initialize the db on every request if it's not already
-  // initialized.
-  if (!db) {
-    initDb(function(err){});
-  }
-  if (db) {
-    var col = db.collection('counts');
-    // Create a document with request IP and current time of request
-    col.insert({ip: req.ip, date: Date.now()});
-    col.count(function(err, count){
-      if (err) {
-        console.log('Error running count. Message:\n'+err);
-      }
-      res.render('index.html', { pageCountMessage : count, dbInfo: dbDetails });
-    });
-  } else {
-    res.render('index.html', { pageCountMessage : null});
-  }
-});
+// app.get('/', function (req, res) {
+//   // try to initialize the db on every request if it's not already
+//   // initialized.
+//   if (!db) {
+//     initDb(function(err){});
+//   }
+//   if (db) {
+//     var col = db.collection('counts');
+//     // Create a document with request IP and current time of request
+//     col.insert({ip: req.ip, date: Date.now()});
+//     col.count(function(err, count){
+//       if (err) {
+//         console.log('Error running count. Message:\n'+err);
+//       }
+//       res.render('index.html', { pageCountMessage : count, dbInfo: dbDetails });
+//     });
+//   } else {
+//     res.render('index.html', { pageCountMessage : null});
+//   }
+// });
 
-app.get('/pagecount', function (req, res) {
-  // try to initialize the db on every request if it's not already
-  // initialized.
-  if (!db) {
-    initDb(function(err){});
-  }
-  if (db) {
-    db.collection('counts').count(function(err, count ){
-      res.send('{ pageCount: ' + count + '}');
-    });
-  } else {
-    res.send('{ pageCount: -1 }');
-  }
-});
+// app.get('/pagecount', function (req, res) {
+//   // try to initialize the db on every request if it's not already
+//   // initialized.
+//   if (!db) {
+//     initDb(function(err){});
+//   }
+//   if (db) {
+//     db.collection('counts').count(function(err, count ){
+//       res.send('{ pageCount: ' + count + '}');
+//     });
+//   } else {
+//     res.send('{ pageCount: -1 }');
+//   }
+// });
 
 // error handling
 app.use(function(err, req, res, next){
